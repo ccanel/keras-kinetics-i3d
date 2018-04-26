@@ -33,7 +33,7 @@ def main(args):
             # build model for RGB data
             # and load pretrained weights (trained on kinetics dataset only) 
             rgb_model = Inception_Inflated3d(
-                include_top=True,
+                include_top=False,
                 weights='rgb_kinetics_only',
                 input_shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS),
                 classes=NUM_CLASSES)
@@ -41,7 +41,7 @@ def main(args):
             # build model for RGB data
             # and load pretrained weights (trained on imagenet and kinetics dataset)
             rgb_model = Inception_Inflated3d(
-                include_top=True,
+                include_top=False,
                 weights='rgb_imagenet_and_kinetics',
                 input_shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS),
                 classes=NUM_CLASSES)
@@ -58,7 +58,7 @@ def main(args):
             # build model for optical flow data
             # and load pretrained weights (trained on kinetics dataset only)
             flow_model = Inception_Inflated3d(
-                include_top=True,
+                include_top=False,
                 weights='flow_kinetics_only',
                 input_shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS),
                 classes=NUM_CLASSES)
@@ -66,7 +66,7 @@ def main(args):
             # build model for optical flow data
             # and load pretrained weights (trained on imagenet and kinetics dataset)
             flow_model = Inception_Inflated3d(
-                include_top=True,
+                include_top=False,
                 weights='flow_imagenet_and_kinetics',
                 input_shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS),
                 classes=NUM_CLASSES)
@@ -95,7 +95,8 @@ def main(args):
 
     print('\nNorm of logits: %f' % np.linalg.norm(sample_logits))
     print('\nTop classes and probabilities')
-    for index in sorted_indices[:20]:
+    for index in sorted_indices[0][0][0]:
+        print(index);
         print(sample_predictions[index], sample_logits[index], kinetics_classes[index])
 
     return

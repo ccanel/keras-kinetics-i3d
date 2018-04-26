@@ -515,8 +515,8 @@ def Inception_Inflated3d(include_top=True,
         h = int(x.shape[2])
         w = int(x.shape[3])
         x = AveragePooling3D((2, h, w), strides=(1, 1, 1), padding='valid', name='global_avg_pool')(x)
-
-
+        x = Dense(1024, activation='relu')(x);
+        x = Dense(2, activation='softmax')(x)
 
     inputs = img_input
     # create model
@@ -557,7 +557,7 @@ def Inception_Inflated3d(include_top=True,
                 model_name = 'i3d_inception_flow_imagenet_and_kinetics_no_top.h5'
 
         downloaded_weights_path = get_file(model_name, weights_url, cache_subdir='models')
-        model.load_weights(downloaded_weights_path)
+        model.load_weights(downloaded_weights_path, by_name=True)
 
         if K.backend() == 'theano':
             layer_utils.convert_all_kernels_in_model(model)
