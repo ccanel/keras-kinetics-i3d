@@ -8,7 +8,6 @@ import argparse
 
 from i3d_inception import Inception_Inflated3d
 
-NUM_FRAMES = 79
 FRAME_HEIGHT = 224
 FRAME_WIDTH = 224
 NUM_RGB_CHANNELS = 3
@@ -24,6 +23,7 @@ SAMPLE_DATA_PATH = {
 LABEL_MAP_PATH = 'data/label_map.txt'
 
 def main(args):
+    num_frames = args.num_frames;
     # load the kinetics classes
     kinetics_classes = [x.strip() for x in open(LABEL_MAP_PATH, 'r')]
 
@@ -35,7 +35,7 @@ def main(args):
             rgb_model = Inception_Inflated3d(
                 include_top=False,
                 weights='rgb_kinetics_only',
-                input_shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS),
+                input_shape=(num_frames, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS),
                 classes=NUM_CLASSES)
         else:
             # build model for RGB data
@@ -43,11 +43,12 @@ def main(args):
             rgb_model = Inception_Inflated3d(
                 include_top=False,
                 weights='rgb_imagenet_and_kinetics',
-                input_shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS),
+                input_shape=(num_frames, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS),
                 classes=NUM_CLASSES)
 
         # load RGB sample (just one example)
         rgb_sample = np.load(SAMPLE_DATA_PATH['rgb'])
+        rgb_sample = np.asarray([rgb_sample[0][:num_frames]]);
         
         # make prediction
         rgb_logits = rgb_model.predict(rgb_sample)
@@ -60,7 +61,7 @@ def main(args):
             flow_model = Inception_Inflated3d(
                 include_top=False,
                 weights='flow_kinetics_only',
-                input_shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS),
+                input_shape=(num_frames, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS),
                 classes=NUM_CLASSES)
         else:
             # build model for optical flow data
@@ -68,12 +69,13 @@ def main(args):
             flow_model = Inception_Inflated3d(
                 include_top=False,
                 weights='flow_imagenet_and_kinetics',
-                input_shape=(NUM_FRAMES, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS),
+                input_shape=(num_frames, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS),
                 classes=NUM_CLASSES)
 
 
         # load flow sample (just one example)
         flow_sample = np.load(SAMPLE_DATA_PATH['flow'])
+        flow_sample = np.asarray([flow_sample[0][:num_frames]]);
         
         # make prediction
         flow_logits = flow_model.predict(flow_sample)
@@ -95,8 +97,9 @@ def main(args):
 
     print('\nNorm of logits: %f' % np.linalg.norm(sample_logits))
     print('\nTop classes and probabilities')
-    for index in sorted_indices[0][0][0]:
-        print(index);
+    sample_predictions = np.squeeze(sample_predictions);
+    sample_logits = np.squeeze(sample_predictions);
+    for index in np.squeeze(sorted_indices):
         print(sample_predictions[index], sample_logits[index], kinetics_classes[index])
 
     return
@@ -105,6 +108,7 @@ def main(args):
 if __name__ == '__main__':
     # parse arguments
     parser = argparse.ArgumentParser()
+    parser.add_argument('--num-frames', help='Window size.', type=int, required=False, default=79);
     parser.add_argument('--eval-type', 
         help='specify model type. 1 stream (rgb or flow) or 2 stream (joint = rgb and flow).', 
         type=str, choices=['rgb', 'flow', 'joint'], default='joint')
@@ -112,7 +116,6 @@ if __name__ == '__main__':
     parser.add_argument('--no-imagenet-pretrained',
         help='If set, load model weights trained only on kinetics dataset. Otherwise, load model weights trained on imagenet and kinetics dataset.',
         action='store_true')
-
 
     args = parser.parse_args()
     main(args)

@@ -108,7 +108,7 @@ def _obtain_input_shape(input_shape,
     if (weights == 'kinetics_only' or weights == 'imagenet_and_kinetics') and require_flatten:
         if input_shape is not None:
             if input_shape != default_shape:
-                raise ValueError('When setting`include_top=True` '
+                raise ValueError('When setting`include_top=False` '
                                  'and loading `imagenet` weights, '
                                  '`input_shape` should be ' +
                                  str(default_shape) + '.')
@@ -227,7 +227,7 @@ def conv3d_bn(x,
     return x
 
 
-def Inception_Inflated3d(include_top=True,
+def Inception_Inflated3d(include_top=False,
                 weights=None,
                 input_tensor=None,
                 input_shape=None,
@@ -303,7 +303,7 @@ def Inception_Inflated3d(include_top=True,
         input_shape,
         default_frame_size=224, 
         min_frame_size=32, 
-        default_num_frames=64,
+        default_num_frames=8,
         min_num_frames=8,
         data_format=K.image_data_format(),
         require_flatten=include_top,
