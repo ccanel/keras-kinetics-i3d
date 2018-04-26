@@ -8,6 +8,11 @@ import argparse
 
 from i3d_inception import Inception_Inflated3d
 
+from keras import backend as K
+
+import tensorflow as tf
+from tensorflow.python.tools import freeze_graph
+
 FRAME_HEIGHT = 224
 FRAME_WIDTH = 224
 NUM_RGB_CHANNELS = 3
@@ -21,6 +26,16 @@ SAMPLE_DATA_PATH = {
 }
 
 LABEL_MAP_PATH = 'data/label_map.txt'
+
+def save_pb(mem_model, prefix):
+    sess = K.get_session()
+    graph_def = sess.graph.as_graph_def()
+    tf.train.write_graph(graph_def,
+                         logdir='.',
+                         name=prefix+'.pb',
+                         as_text=False)
+    saver = tf.train.Saver()
+    saver.save(sess, prefix+'.ckpt', write_meta_graph=True)
 
 def main(args):
     num_frames = args.num_frames;
@@ -45,6 +60,7 @@ def main(args):
                 weights='rgb_imagenet_and_kinetics',
                 input_shape=(num_frames, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS),
                 classes=NUM_CLASSES)
+        save_pb(rgb_model, '/tmp/rgb_model');
 
         # load RGB sample (just one example)
         rgb_sample = np.load(SAMPLE_DATA_PATH['rgb'])
@@ -71,6 +87,7 @@ def main(args):
                 weights='flow_imagenet_and_kinetics',
                 input_shape=(num_frames, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS),
                 classes=NUM_CLASSES)
+        save_pb(flow_model, '/tmp/flow_model');
 
 
         # load flow sample (just one example)
@@ -79,7 +96,6 @@ def main(args):
         
         # make prediction
         flow_logits = flow_model.predict(flow_sample)
-
 
     # produce final model logits
     if args.eval_type == 'rgb':
