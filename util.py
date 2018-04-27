@@ -43,13 +43,13 @@ state_no_event = "No Event"
 state_unknown = "Unknown"
 state_event = "Event"
 
-def get_per_frame_labels():
+def get_per_frame_labels(labels_dir):
   data_points = dict()
   full_labels = dict()
   prev_state = state_no_event
   state = state_no_event
-  for f in os.listdir(args.data_dir):
-    read_file(os.path.join(args.data_dir, f), data_points)
+  for f in os.listdir(labels_dir):
+    read_file(os.path.join(labels_dir, f), data_points)
     for idx in range(0, sorted(data_points.keys())[-1]):
       if idx in data_points:
         if(data_points[idx] == partial_start_str):
@@ -101,8 +101,13 @@ def get_labels(window_size, full_labels):
 
 def training_generator(data_gen, labels):
   for label in labels:
-    yield data_gen.next(), labels
+    yield data_gen.next(), np.asarray(labels)
     
+def create_training_generator(video_file, window_size, labels_dir):
+  data_points, full_labels = get_per_frame_labels(labels_dir)
+  frames = video_reader(video_file)
+  labels = get_labels(window_size, full_labels)
+  return training_generator(frames, labels);
 
 def main(args):
   data_points, full_labels = get_per_frame_labels()
@@ -118,7 +123,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--window', help='Window size.', type=int, required=False, default=16)
     parser.add_argument('--video', help='Video file.', type=str, required=False, default='./video.mp4')
-    parser.add_argument('--data-dir', help='Data dir', type=str, required=False, default='./data')
+    parser.add_argument('--labels-dir', help='Labels dir', type=str, required=False, default='./labels')
 
     args = parser.parse_args()
     main(args)
