@@ -40,14 +40,11 @@ def save_pb(mem_model, prefix):
     saver.save(sess, prefix+'.ckpt', write_meta_graph=True)
 
 import sys
-def train(model, video_file, window_size, labels_dir):
+def train(model, video_file, window_size, labels_dir, batch_size):
   optimizer = Adam(0.0001);
   model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy']);
-  gen = util.create_training_generator(video_file, window_size, labels_dir);
-  garbage = gen.next();
-  print(garbage[0].shape);
-  print(garbage[1].shape);
-  model.fit_generator(gen, steps_per_epoch=1);
+  gen = util.create_training_generator(video_file, window_size, labels_dir, batch_size);
+  model.fit_generator(gen, steps_per_epoch=1, epochs=5);
 
 def main(args):
     window_size = args.window;
@@ -72,7 +69,7 @@ def main(args):
                 weights='rgb_imagenet_and_kinetics',
                 input_shape=(window_size, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS),
                 classes=NUM_CLASSES)
-        train(rgb_model, args.video, window_size, args.labels_dir)
+        train(rgb_model, args.video, window_size, args.labels_dir, args.batch)
         save_pb(rgb_model, '/tmp/rgb_model')
 
         # load RGB sample (just one example)
@@ -100,7 +97,7 @@ def main(args):
                 weights='flow_imagenet_and_kinetics',
                 input_shape=(window_size, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS),
                 classes=NUM_CLASSES)
-        train(flow_model, args.video, window_size, args.labels_dir)
+        train(flow_model, args.video, window_size, args.labels_dir, args.batch)
         save_pb(flow_model, '/tmp/flow_model')
 
 
@@ -130,7 +127,7 @@ def main(args):
     sample_predictions = np.squeeze(sample_predictions);
     sample_logits = np.squeeze(sample_predictions);
     for index in np.squeeze(sorted_indices):
-        print(sample_predictions[index], sample_logits[index], kinetics_classes[index])
+      print(sample_predictions[index], sample_logits[index], kinetics_classes[index])
 
     return
 
@@ -144,6 +141,7 @@ if __name__ == '__main__':
         type=str, choices=['rgb', 'flow', 'joint'], default='rgb')
     parser.add_argument('--video', help='Video file.', type=str, required=False, default='./video.mp4')
     parser.add_argument('--labels-dir', help='Labels dir', type=str, required=False, default='./labels')
+    parser.add_argument('--batch', help='Batch size.', type=int, required=False, default=1);
 
     parser.add_argument('--no-imagenet-pretrained',
         help='If set, load model weights trained only on kinetics dataset. Otherwise, load model weights trained on imagenet and kinetics dataset.',
