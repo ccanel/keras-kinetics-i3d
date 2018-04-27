@@ -1,66 +1,76 @@
 '''
-Batchification
+Utils for loading data
 '''
 
-import numpy as np
 import argparse
-import os
-import itertools
-
-import tensorflow as tf
-import cv2
-
 from collections import Counter
+import itertools
+import os
+
+import cv2
+from keras.utils import np_utils
+import numpy as np
+
+
+PARTIAL_START_STR = "Partial Start"
+PARTIAL_END_STR = "Partial Finish"
+FULL_START_STR = "Full Start"
+FULL_END_STR = "Full Finish"
+
+STATE_NO_EVENT = "No Event"
+STATE_UNKNOWN = "Unknown"
+STATE_EVENT = "Event"
+
+LABEL_MAP = { 
+  STATE_NO_EVENT: 0,
+  STATE_EVENT: 1
+}
+
 
 def video_reader(path):
-  count = 0;
+  print("Reading video from file: {}".format(path))
+  count = 0
   cap = cv2.VideoCapture(path)
   if(cap.isOpened() == False):
     raise Exception("Violent Error")
   while(cap.isOpened()):
     code, frame = cap.read()
-    print("Read frame " + str(count))
-    count += 1;
+    if(count % 1000 == 0):
+      print("Read frame " + str(count))
+    count += 1
     if(code == True):
       yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     else:
       break
   cap.release()
 
+
 def read_file(filename, data_points):
-  print(filename)
+  print("Reading labels from file: {}".format(filename))
   f = open(filename)
   for line in f:
     split_line = line.rstrip().split(":")
     data_points[int(split_line[1])] = split_line[0]
 
-partial_start_str = "Partial Start"
-partial_end_str = "Partial Finish"
-full_start_str = "Full Start"
-full_end_str = "Full Finish"
-
-state_no_event = "No Event"
-state_unknown = "Unknown"
-state_event = "Event"
 
 def get_per_frame_labels(labels_dir):
-  data_points = dict()
-  full_labels = dict()
-  prev_state = state_no_event
-  state = state_no_event
+  data_points = {}
+  full_labels = {}
+  prev_state = STATE_NO_EVENT
+  state = STATE_NO_EVENT
   for f in os.listdir(labels_dir):
     read_file(os.path.join(labels_dir, f), data_points)
-    for idx in range(0, sorted(data_points.keys())[-1]):
+    for idx in xrange(sorted(data_points.keys())[-1]):
       if idx in data_points:
-        if(data_points[idx] == partial_start_str):
-          prev_state = state_unknown
-          state = state_unknown
-        if(data_points[idx] == partial_end_str):
-          prev_state = state_no_event
-          state = state_no_event
-        if(data_points[idx] == full_start_str):
-          state = state_event
-        if(data_points[idx] == full_end_str):
+        if(data_points[idx] == PARTIAL_START_STR):
+          prev_state = STATE_UNKNOWN
+          state = STATE_UNKNOWN
+        if(data_points[idx] == PARTIAL_END_STR):
+          prev_state = STATE_NO_EVENT
+          state = STATE_NO_EVENT
+        if(data_points[idx] == FULL_START_STR):
+          state = STATE_EVENT
+        if(data_points[idx] == FULL_END_STR):
           state = prev_state
       full_labels[idx] = state
   for key in sorted(full_labels.keys()):
@@ -68,55 +78,42 @@ def get_per_frame_labels(labels_dir):
   return data_points, full_labels
 
 
-def read_video_file(path):
-  count = 0
-  cap = cv2.VideoCapture(path)
-  frames = []
-  if(cap.isOpened() == False):
-    raise Exception("Violent Error")
-  while(cap.isOpened()):
-    code, frame = cap.read()
-    print("Read frame " + str(count));
-    count += 1;
-    if(code == True):
-      frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-      frames.append(frame)
-    else:
-      break
-  cap.release()
-  return frames
-
-def get_data(window_size, frames, total_frames):
+def get_data_window(window_size, frames, total_frames):
   for i in range(0, total_frames - window_size, window_size):
-    yield itertools.islice(frames, window_size)
+    yield np.asarray(list(itertools.islice(frames, window_size)))
 
-def get_labels(window_size, full_labels):
+
+def get_label_window(window_size, full_labels):
   labels = []
   total_frames = len(full_labels)
   for i in range(0, total_frames - window_size, window_size):
     cur_window_labels = [full_labels[k] for k in range(i, i + window_size)]
     data = Counter(cur_window_labels)
-    labels.append(data.most_common(1)[0])
+    labels.append(data.most_common(1)[0][0])
   return labels
 
-def training_generator(data_gen, labels):
-  for label in labels:
-    yield data_gen.next(), np.asarray(labels)
+
+def training_generator(data_windows, label_windows):
+  for label_window in label_windows:
+    data_window = data_windows.next()
+    if(label_window != STATE_UNKNOWN):
+      yield data_window, np_utils.to_categorical(np.asarray(LABEL_MAP[label_window]), num_classes=2)
     
+
 def create_training_generator(video_file, window_size, labels_dir):
   data_points, full_labels = get_per_frame_labels(labels_dir)
   frames = video_reader(video_file)
-  labels = get_labels(window_size, full_labels)
-  return training_generator(frames, labels);
+  frame_windows = get_data_window(window_size, frames, len(full_labels))
+  label_windows = get_label_window(window_size, full_labels)
+  return training_generator(frame_windows, label_windows)
 
-def main(args):
-  data_points, full_labels = get_per_frame_labels()
-  frames = video_reader(args.video)
-  labels = get_labels(args.window, full_labels)
-  g = get_data(args.window, frames, len(full_labels))
-  print(list(g.next()))
-  print(len(labels))
-  return 0
+
+def test(args):
+  g = create_training_generator(args.video, args.window, args.labels_dir)
+  count = 0
+  for d, l in g:
+    count+=1;
+  print(count)
 
 if __name__ == '__main__':
     # parse arguments
@@ -124,6 +121,4 @@ if __name__ == '__main__':
     parser.add_argument('--window', help='Window size.', type=int, required=False, default=16)
     parser.add_argument('--video', help='Video file.', type=str, required=False, default='./video.mp4')
     parser.add_argument('--labels-dir', help='Labels dir', type=str, required=False, default='./labels')
-
-    args = parser.parse_args()
-    main(args)
+    test(parser.parse_args())
