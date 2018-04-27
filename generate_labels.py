@@ -99,13 +99,18 @@ def get_labels(window_size, full_labels):
     labels.append(data.most_common(1)[0])
   return labels
 
+def training_generator(data_gen, labels):
+  for label in labels:
+    yield data_gen.next(), labels
+    
+
 def main(args):
   data_points, full_labels = get_per_frame_labels()
   frames = video_reader(args.video)
   labels = get_labels(args.window, full_labels)
   g = get_data(args.window, frames, len(full_labels))
   print(list(g.next()))
-  print(len(labels));
+  print(len(labels))
   return 0
 
 if __name__ == '__main__':
