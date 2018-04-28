@@ -28,17 +28,19 @@ LABEL_MAP = {
 }
 
 
-def video_reader(path):
+def video_reader(path, pct_frames=1.0):
   print("Reading video from file: {}".format(path))
-  #count = 0
+  count = 0
   cap = cv2.VideoCapture(path)
+  length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+  target_length = int(pct_frames * length)
   if(not cap.isOpened()):
     raise Exception("Violent Error")
-  while(cap.isOpened()):
+  while(cap.isOpened() and count <= target_length):
     code, frame = cap.read()
     #if(count % 1000 == 0):
       #print("Read frame " + str(count))
-    #count += 1
+    count += 1
     if(code):
       yield cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), (RESIZE_DIM, RESIZE_DIM))
     else:
@@ -76,7 +78,7 @@ def get_per_frame_labels(labels_dir):
       full_labels[idx] = state
   for key in sorted(full_labels.keys()):
       val = full_labels[key]
-  return data_points, full_labels
+  return full_labels
 
 
 def get_data_window(window_size, frames, total_frames):
@@ -113,9 +115,11 @@ def batched_training_generator(gen, batch_size):
       ls = []
 
 
-def create_training_generator(video_file, window_size, labels_dir):
-  data_points, full_labels = get_per_frame_labels(labels_dir)
-  frames = video_reader(video_file)
+def create_training_generator(video_file, window_size, labels_dir, pct_frames=1.0):
+  full_labels = get_per_frame_labels(labels_dir)
+  full_labels = {k : full_labels[k] for k in sorted(full_labels.keys())[:int(pct_frames * len(full_labels))]}
+  print(len(full_labels))
+  frames = video_reader(video_file, pct_frames)
   frame_windows = get_data_window(window_size, frames, len(full_labels))
   label_windows = get_label_window(window_size, full_labels)
   return training_generator(frame_windows, label_windows)
@@ -126,9 +130,8 @@ def create_training_generator_batched(video_file, window_size, labels_dir, batch
 
 
 def get_training_data(video_file, window_size, labels_dir, pct_frames=1.0):
-  data = list(create_training_generator(video_file, window_size, labels_dir))
-  num_frames = int(len(data) * pct_frames);
-  return np.asarray([x for x, _ in data][:num_frames]), np.asarray([y for _, y in data][:num_frames])
+  data = list(create_training_generator(video_file, window_size, labels_dir, pct_frames))
+  return np.asarray([x for x, _ in data]), np.asarray([y for _, y in data])
 
 def test(args):
   g = create_training_generator(args.video, args.window, args.labels_dir)

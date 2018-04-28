@@ -51,7 +51,7 @@ def train(model, video_file, window_size, labels_dir, batch_size, pct_frames):
   class_weights = dict(enumerate(class_weight.compute_class_weight(
     'balanced', np.unique(Y_decoded), Y_decoded)))
   print("Class weights: " + str(class_weights))
-  model.fit(x=X, y=Y, epochs=EPOCHS, validation_split=0.2, batch_size=batch_size, class_weight=class_weights)
+  model.fit(x=X, y=Y, epochs=EPOCHS, validation_split=0.2, batch_size=batch_size, class_weight=class_weights, shuffle=True)
 
 def main(args):
     window_size = args.window;
