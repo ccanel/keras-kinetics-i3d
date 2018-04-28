@@ -117,6 +117,8 @@ def batched_training_generator(gen, batch_size):
 
 def create_training_generator(video_file, window_size, labels_dir, pct_frames=1.0):
   full_labels = get_per_frame_labels(labels_dir)
+  print(str(len(full_labels)));
+  exit();
   full_labels = {k : full_labels[k] for k in sorted(full_labels.keys())[:int(pct_frames * len(full_labels))]}
   print(len(full_labels))
   frames = video_reader(video_file, pct_frames)

@@ -515,7 +515,8 @@ def Inception_Inflated3d(include_top=False,
     else:
         h = int(x.shape[2])
         w = int(x.shape[3])
-        x = AveragePooling3D((2, h, w), strides=(1, 1, 1), padding='valid', name='global_avg_pool')(x)
+        print(x.shape)
+        x = AveragePooling3D((int(x.shape[1]), h, w), strides=(1, 1, 1), padding='valid', name='global_avg_pool')(x)
         x = Flatten()(x);
         x = Dense(1024, activation='relu')(x);
         x = Dense(2, activation='softmax')(x)

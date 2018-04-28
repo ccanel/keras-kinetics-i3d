@@ -9,7 +9,7 @@ from i3d_inception import Inception_Inflated3d
 
 from keras import backend as K
 from keras.optimizers import Adam
-
+from sklearn.utils import class_weight
 import tensorflow as tf
 from tensorflow.python.tools import freeze_graph
 
@@ -39,9 +39,6 @@ def save_pb(mem_model, prefix):
                          as_text=False)
     saver = tf.train.Saver()
     saver.save(sess, prefix+'.ckpt', write_meta_graph=True)
-
-import sys
-from sklearn.utils import class_weight
 
 def train(model, video_file, window_size, labels_dir, batch_size, pct_frames, num_epochs):
   optimizer = Adam(0.0001);
