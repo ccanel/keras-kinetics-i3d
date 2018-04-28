@@ -28,6 +28,7 @@ SAMPLE_DATA_PATH = {
 }
 
 LABEL_MAP_PATH = 'data/label_map.txt'
+EPOCHS=40
 
 def save_pb(mem_model, prefix):
     sess = K.get_session()
@@ -40,11 +41,17 @@ def save_pb(mem_model, prefix):
     saver.save(sess, prefix+'.ckpt', write_meta_graph=True)
 
 import sys
-def train(model, video_file, window_size, labels_dir, batch_size):
+from sklearn.utils import class_weight
+
+def train(model, video_file, window_size, labels_dir, batch_size, pct_frames):
   optimizer = Adam(0.0001);
-  model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy']);
-  gen = util.create_training_generator(video_file, window_size, labels_dir, batch_size);
-  model.fit_generator(gen, steps_per_epoch=1, epochs=5);
+  model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+  X, Y = util.get_training_data(video_file, window_size, labels_dir, pct_frames)
+  Y_decoded = [y.argmax() for y in Y]
+  class_weights = dict(enumerate(class_weight.compute_class_weight(
+    'balanced', np.unique(Y_decoded), Y_decoded)))
+  print("Class weights: " + str(class_weights))
+  model.fit(x=X, y=Y, epochs=EPOCHS, validation_split=0.2, batch_size=batch_size, class_weight=class_weights)
 
 def main(args):
     window_size = args.window;
@@ -69,7 +76,7 @@ def main(args):
                 weights='rgb_imagenet_and_kinetics',
                 input_shape=(window_size, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS),
                 classes=NUM_CLASSES)
-        train(rgb_model, args.video, window_size, args.labels_dir, args.batch)
+        train(rgb_model, args.video, window_size, args.labels_dir, args.batch, args.pct_frames)
         save_pb(rgb_model, '/tmp/rgb_model')
 
         # load RGB sample (just one example)
@@ -97,7 +104,7 @@ def main(args):
                 weights='flow_imagenet_and_kinetics',
                 input_shape=(window_size, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS),
                 classes=NUM_CLASSES)
-        train(flow_model, args.video, window_size, args.labels_dir, args.batch)
+        train(flow_model, args.video, window_size, args.labels_dir, args.batch, args.pct_frames)
         save_pb(flow_model, '/tmp/flow_model')
 
 
@@ -146,6 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('--no-imagenet-pretrained',
         help='If set, load model weights trained only on kinetics dataset. Otherwise, load model weights trained on imagenet and kinetics dataset.',
         action='store_true')
+    parser.add_argument('--pct-frames', help='Percentage of frames used to train [0, 1.0].', type=float, required=False, default=1.0);
 
     args = parser.parse_args()
     main(args)
