@@ -43,7 +43,7 @@ def save_pb(mem_model, prefix):
 import sys
 from sklearn.utils import class_weight
 
-def train(model, video_file, window_size, labels_dir, batch_size, pct_frames):
+def train(model, video_file, window_size, labels_dir, batch_size, pct_frames, num_epochs):
   optimizer = Adam(0.0001);
   model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
   X, Y = util.get_training_data(video_file, window_size, labels_dir, pct_frames)
@@ -51,7 +51,7 @@ def train(model, video_file, window_size, labels_dir, batch_size, pct_frames):
   class_weights = dict(enumerate(class_weight.compute_class_weight(
     'balanced', np.unique(Y_decoded), Y_decoded)))
   print("Class weights: " + str(class_weights))
-  model.fit(x=X, y=Y, epochs=EPOCHS, validation_split=0.2, batch_size=batch_size, class_weight=class_weights, shuffle=True)
+  model.fit(x=X, y=Y, epochs=num_epochs, validation_split=0.2, batch_size=batch_size, class_weight=class_weights, shuffle=True)
 
 def main(args):
     window_size = args.window;
@@ -76,7 +76,7 @@ def main(args):
                 weights='rgb_imagenet_and_kinetics',
                 input_shape=(window_size, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS),
                 classes=NUM_CLASSES)
-        train(rgb_model, args.video, window_size, args.labels_dir, args.batch, args.pct_frames)
+        train(rgb_model, args.video, window_size, args.labels_dir, args.batch, args.pct_frames, args.epochs)
         save_pb(rgb_model, '/tmp/rgb_model')
 
         # load RGB sample (just one example)
@@ -104,7 +104,7 @@ def main(args):
                 weights='flow_imagenet_and_kinetics',
                 input_shape=(window_size, FRAME_HEIGHT, FRAME_WIDTH, NUM_FLOW_CHANNELS),
                 classes=NUM_CLASSES)
-        train(flow_model, args.video, window_size, args.labels_dir, args.batch, args.pct_frames)
+        train(flow_model, args.video, window_size, args.labels_dir, args.batch, args.pct_frames, args.epochs)
         save_pb(flow_model, '/tmp/flow_model')
 
 
@@ -148,7 +148,8 @@ if __name__ == '__main__':
         type=str, choices=['rgb', 'flow', 'joint'], default='rgb')
     parser.add_argument('--video', help='Video file.', type=str, required=False, default='./video.mp4')
     parser.add_argument('--labels-dir', help='Labels dir', type=str, required=False, default='./labels')
-    parser.add_argument('--batch', help='Batch size.', type=int, required=False, default=1);
+    parser.add_argument('--batch', help='Batch size.', type=int, required=False, default=1)
+    parser.add_argument('--epochs', help='Number of epochs.', type=int, required=False, default=20)
 
     parser.add_argument('--no-imagenet-pretrained',
         help='If set, load model weights trained only on kinetics dataset. Otherwise, load model weights trained on imagenet and kinetics dataset.',
