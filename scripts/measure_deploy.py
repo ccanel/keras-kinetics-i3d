@@ -22,7 +22,9 @@ def parse_args():
     parser.add_argument(
         "--window", help="Window size", nargs="+", type=int, required=True)
     parser.add_argument(
-        "--samples", help="Num samples", type=int, required=False, default=5)
+        "--warmup", help="The number of warmup trials", type=int, required=True)
+    parser.add_argument(
+        "--trials", help="Num trials", type=int, required=False, default=5)
     parser.add_argument(
         "--out-file", help="Output file", type=str, required=True)
     parser.add_argument(
@@ -45,10 +47,13 @@ def record_result(out_file, window_size, inf_dur_s, fps):
 
 def main():
     args = parse_args()
-
     fps = args.fps
-    samples = args.samples
-    print("Number of samples: {}".format(samples))
+    warmup_trials = args.warmup
+    true_trials = args.trials
+    total_trials = warmup_trials + true_trials
+    print("Running with {} warmup trials and {} true trials".format(
+        warmup_trials, true_trials))
+
     with open(args.out_file, "w") as out_file:
         out_file.write(
             ("# Window size, accumulate time (s), inference time (s), total "
@@ -67,17 +72,19 @@ def main():
                 classes=NUM_CLASSES)
 
             # load RGB sample (just one example)
-            raw_samples = np.load(SAMPLE_DATA_PATH)
-            one_sample = raw_samples[0][0]
-            all_samples = np.asarray([[one_sample] * window_size])
+            raw_frames = np.load(SAMPLE_DATA_PATH)
+            one_frame = raw_frames[0][0]
+            all_frames = np.asarray([[one_frame] * window_size])
 
+            # Do warmup
+            for _ in xrange(warmup_trials):
+                model.predict(all_frames)
+
+            # Real trials
             start_time_s = time.time()
-            for _ in xrange(samples):
-                # make prediction
-                model.predict(all_samples)
-                inf_dur_s = (time.time() - start_time_s) / float(samples)
-
-
+            for _ in xrange(true_trials):
+                model.predict(all_frames)
+            inf_dur_s = (time.time() - start_time_s) / float(true_trials)
             record_result(out_file, window_size, inf_dur_s, fps)
     return
 
