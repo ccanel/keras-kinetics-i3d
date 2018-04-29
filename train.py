@@ -4,6 +4,7 @@ Trains i3d
 
 import numpy as np
 import argparse
+import random
 
 from i3d_inception import Inception_Inflated3d
 
@@ -12,6 +13,7 @@ from keras.optimizers import Adam
 from sklearn.utils import class_weight
 import tensorflow as tf
 from tensorflow.python.tools import freeze_graph
+from keras.utils import np_utils
 
 import util
 
@@ -40,10 +42,12 @@ def save_pb(mem_model, prefix):
     saver = tf.train.Saver()
     saver.save(sess, prefix+'.ckpt', write_meta_graph=True)
 
-def train(model, video_file, window_size, labels_dir, batch_size, pct_frames, num_epochs):
+def train(model, video_file, window_size, labels_dir, batch_size, pct_frames, num_epochs, random_labels=False):
   optimizer = Adam(0.0001);
   model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
   X, Y = util.get_training_data(video_file, window_size, labels_dir, pct_frames)
+  if(random_labels):
+    Y = np_utils.to_categorical(np.asarray([random.choice(range(2)) for y in Y]), num_classes=2)
   Y_decoded = [y.argmax() for y in Y]
   class_weights = dict(enumerate(class_weight.compute_class_weight(
     'balanced', np.unique(Y_decoded), Y_decoded)))
@@ -73,7 +77,7 @@ def main(args):
                 weights='rgb_imagenet_and_kinetics',
                 input_shape=(window_size, FRAME_HEIGHT, FRAME_WIDTH, NUM_RGB_CHANNELS),
                 classes=NUM_CLASSES)
-        train(rgb_model, args.video, window_size, args.labels_dir, args.batch, args.pct_frames, args.epochs)
+        train(rgb_model, args.video, window_size, args.labels_dir, args.batch, args.pct_frames, args.epochs, args.random)
         save_pb(rgb_model, '/tmp/rgb_model')
 
         # load RGB sample (just one example)
@@ -152,6 +156,9 @@ if __name__ == '__main__':
         help='If set, load model weights trained only on kinetics dataset. Otherwise, load model weights trained on imagenet and kinetics dataset.',
         action='store_true')
     parser.add_argument('--pct-frames', help='Percentage of frames used to train [0, 1.0].', type=float, required=False, default=1.0);
+    parser.add_argument('--random',
+        help='If set, all labels are random',
+        action='store_true')
 
     args = parser.parse_args()
     main(args)

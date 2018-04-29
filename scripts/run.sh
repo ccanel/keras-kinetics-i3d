@@ -12,4 +12,5 @@ python train.py --window $WINDOW \
                 --labels-dir $LABELS \
                 --batch $BATCH \
                 --epochs $EPOCHS \
-                --pct-frames $PCT_FRAMES
+                --pct-frames $PCT_FRAMES \
+                --random
