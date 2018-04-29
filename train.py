@@ -85,13 +85,6 @@ def main(args):
         train(rgb_model, args.video, window_size, args.labels_dir, args.batch, args.pct_frames, args.epochs)
         save_pb(rgb_model, '/tmp/rgb_model')
 
-        # load RGB sample (just one example)
-        rgb_sample = np.load(SAMPLE_DATA_PATH['rgb'])
-        rgb_sample = np.asarray([rgb_sample[0][:window_size]])
-        
-        # make prediction
-        rgb_logits = rgb_model.predict(rgb_sample)
-
 
     if args.eval_type in ['flow', 'joint']:
         if args.no_imagenet_pretrained:
@@ -112,36 +105,6 @@ def main(args):
                 classes=NUM_CLASSES)
         train(flow_model, args.video, window_size, args.labels_dir, args.batch, args.pct_frames, args.epochs)
         save_pb(flow_model, '/tmp/flow_model')
-
-
-        # load flow sample (just one example)
-        flow_sample = np.load(SAMPLE_DATA_PATH['flow'])
-        flow_sample = np.asarray([flow_sample[0][:window_size]]);
-        
-        # make prediction
-        flow_logits = flow_model.predict(flow_sample)
-
-    # produce final model logits
-    if args.eval_type == 'rgb':
-        sample_logits = rgb_logits
-    elif args.eval_type == 'flow':
-        sample_logits = flow_logits
-    else: # joint
-        sample_logits = rgb_logits + flow_logits
-
-    # produce softmax output from model logit for class probabilities
-    sample_logits = sample_logits[0] # we are dealing with just one example
-    sample_predictions = np.exp(sample_logits) / np.sum(np.exp(sample_logits))
-
-    sorted_indices = np.argsort(sample_predictions)[::-1]
-
-    print('\nNorm of logits: %f' % np.linalg.norm(sample_logits))
-    print('\nTop classes and probabilities')
-    sample_predictions = np.squeeze(sample_predictions);
-    sample_logits = np.squeeze(sample_predictions);
-    for index in np.squeeze(sorted_indices):
-      print(sample_predictions[index], sample_logits[index], kinetics_classes[index])
-
     return
 
 
