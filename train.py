@@ -40,10 +40,19 @@ def save_pb(mem_model, prefix):
     saver = tf.train.Saver()
     saver.save(sess, prefix+'.ckpt', write_meta_graph=True)
 
-def train(model, video_file, window_size, labels_dir, batch_size, pct_frames, num_epochs):
+def train(model, video_files, window_size, labels_dirs, batch_size, pct_frames, num_epochs):
   optimizer = Adam(0.0001);
   model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
-  X, Y = util.get_training_data(video_file, window_size, labels_dir, pct_frames)
+  Xs = []
+  Ys = []
+  for video_file, labels_dir in zip(video_files, labels_dirs):
+    X, Y = util.get_training_data(video_file, window_size, labels_dir, pct_frames)
+    for x in X:
+      Xs.append(x)
+    for y in Y:
+      Ys.append(y)
+  X = np.asarray(Xs)
+  Y = np.asarray(Ys)
   Y_decoded = [y.argmax() for y in Y]
   class_weights = dict(enumerate(class_weight.compute_class_weight(
     'balanced', np.unique(Y_decoded), Y_decoded)))
@@ -143,8 +152,8 @@ if __name__ == '__main__':
     parser.add_argument('--eval-type', 
         help='specify model type. 1 stream (rgb or flow) or 2 stream (joint = rgb and flow).', 
         type=str, choices=['rgb', 'flow', 'joint'], default='rgb')
-    parser.add_argument('--video', help='Video file.', type=str, required=False, default='./video.mp4')
-    parser.add_argument('--labels-dir', help='Labels dir', type=str, required=False, default='./labels')
+    parser.add_argument('--video', help='Video file.', nargs='+', type=str, required=False, default='./video.mp4')
+    parser.add_argument('--labels-dir', help='Labels dir', type=str, nargs='+', required=False, default='./labels')
     parser.add_argument('--batch', help='Batch size.', type=int, required=False, default=1)
     parser.add_argument('--epochs', help='Number of epochs.', type=int, required=False, default=20)
 
