@@ -10,10 +10,38 @@ else
   echo "You must specify either bus or redcar"
   exit
 fi
-BATCH=128
+BATCH=256
 PCT_FRAMES=0.4
 EPOCHS=15
-WINDOW=2
+WINDOW=1
+
+echo "[INFO] Window "$WINDOW
+python train.py --window $WINDOW \
+                --video $VIDEO \
+                --eval-type rgb \
+                --labels-dir $LABELS \
+                --batch $BATCH \
+                --epochs $EPOCHS \
+                --pct-frames $PCT_FRAMES | tee -o "window-$WINDOW.dat"
+
+BATCH=16
+PCT_FRAMES=0.4
+EPOCHS=15
+WINDOW=15
+
+echo "[INFO] Window "$WINDOW
+python train.py --window $WINDOW \
+                --video $VIDEO \
+                --eval-type rgb \
+                --labels-dir $LABELS \
+                --batch $BATCH \
+                --epochs $EPOCHS \
+                --pct-frames $PCT_FRAMES | tee -o "window-$WINDOW.dat"
+
+BATCH=8
+PCT_FRAMES=0.4
+EPOCHS=15
+WINDOW=30
 
 echo "[INFO] Window "$WINDOW
 python train.py --window $WINDOW \
