@@ -52,7 +52,7 @@ def main():
     with open(args.out_file, "w") as out_file:
         out_file.write(
             ("# Window size, accumulate time (s), inference time (s), total "
-             "time (s)"))
+             "time (s)\n"))
 
         for window_size in args.window:
             print("Timing window size: {}".format(window_size))
